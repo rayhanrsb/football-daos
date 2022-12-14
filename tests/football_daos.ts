@@ -98,7 +98,7 @@ const main = async () => {
     program.programId
   );
 
-  console.log(realmPubkey.toString());
+  console.log("realmPubkey is: " + realmPubkey.toString());
 
 
 };
