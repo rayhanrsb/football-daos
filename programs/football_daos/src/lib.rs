@@ -1,5 +1,6 @@
 use anchor_lang::prelude::*;
-use anchor_spl::token::{Mint, MintTo, Token};
+use anchor_spl::token;
+use anchor_spl::token::{MintTo, Token, Transfer};
 // use anchor_lang::solana_program::entrypoint::ProgramResult;
 // use spl_governance::instruction as spl_instruction;
 
@@ -20,7 +21,39 @@ pub mod football_daos {
 
     // My idea of how to create a dao
     // Step 1 Create the community and (optionally) the Council Mints
-    pub fn create_community_mint(ctx: Context<CreateCommunityMint>) -> Result<()> {
+    pub fn mint_token(ctx: Context<CreateCommunityMint>) -> Result<()> {
+        // Create the MintTo struct for our context
+        let cpi_accounts = MintTo {
+            mint: ctx.accounts.mint.to_account_info(),
+            to: ctx.accounts.token_account.to_account_info(),
+            authority: ctx.accounts.authority.to_account_info(),
+        };
+
+        let cpi_program = ctx.accounts.token_program.to_account_info();
+        // Create the CpiContext we need for the request
+        let cpi_ctx = CpiContext::new(cpi_program, cpi_accounts);
+
+        // Execute anchor's helper function to mint tokens
+        token::mint_to(cpi_ctx, 10)?;
+
+        Ok(())
+    }
+
+    pub fn transfer_token(ctx: Context<InitialMintTransfer>) -> Result<()> {
+        // Create the Transfer struct for our context
+        let transfer_instruction = Transfer {
+            from: ctx.accounts.from.to_account_info(),
+            to: ctx.accounts.to.to_account_info(),
+            authority: ctx.accounts.from_authority.to_account_info(),
+        };
+
+        let cpi_program = ctx.accounts.token_program.to_account_info();
+        // Create the Context for our Transfer request
+        let cpi_ctx = CpiContext::new(cpi_program, transfer_instruction);
+
+        // Execute anchor's helper function to transfer tokens
+        anchor_spl::token::transfer(cpi_ctx, 5)?;
+
         Ok(())
     }
 
@@ -203,16 +236,33 @@ pub mod football_daos {
 pub struct Initialize {}
 
 // Create community mint
+#[derive(Accounts)]
 pub struct CreateCommunityMint<'info> {
-    #[account(init, payer = payer, mint::decimals = 9, mint::authority = payer, mint::freeze_authority = payer)]
-    pub mint: Account<'info, Mint>,
+    /// CHECK: This is the token that we want to mint
     #[account(mut)]
-    pub payer: Signer<'info>,
-    pub system_program: Program<'info, System>,
+    pub mint: UncheckedAccount<'info>,
     pub token_program: Program<'info, Token>,
-    ///CHECK: This is not dangerous because we don't read or write from this account
-    pub rent: AccountInfo<'info>,
+    /// CHECK: This is the token account that we want to mint tokens to
+    #[account(mut)]
+    pub token_account: UncheckedAccount<'info>,
+    /// CHECK: the authority of the mint account
+    #[account(mut)]
+    pub authority: AccountInfo<'info>,
 }
+
+#[derive(Accounts)]
+pub struct InitialMintTransfer<'info> {
+    pub token_program: Program<'info, Token>,
+    /// CHECK: The associated token account that we are transferring the token from
+    #[account(mut)]
+    pub from: UncheckedAccount<'info>,
+    /// CHECK: The associated token account that we are transferring the token to
+    #[account(mut)]
+    pub to: AccountInfo<'info>,
+    // the authority of the from account
+    pub from_authority: Signer<'info>,
+}
+
 // // Account structure
 // // These are the accounts involved in creating a DAO
 // // The realm account ties everything together. It commands the community mint account and council mint account

@@ -14,6 +14,7 @@ const main = async () => {
   // Step 1 - Create the community mint
   // Generate a keypair for the community mint
   const communityMint = anchor.web3.Keypair.generate();
+  console.log("Mint is: " + communityMint.publicKey.toString());
 
 };
 
