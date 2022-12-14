@@ -1,8 +1,10 @@
 use anchor_lang::prelude::*;
 use anchor_spl::token;
-use anchor_spl::token::{MintTo, Token, Transfer};
+use anchor_spl::token::{Mint, MintTo, Token};
+use std::str::FromStr;
 // use anchor_lang::solana_program::entrypoint::ProgramResult;
-// use spl_governance::instruction as spl_instruction;
+use spl_governance::instruction as spl_instruction;
+use spl_governance::state::enums::MintMaxVoteWeightSource;
 
 declare_id!("Fg6PaFpoGXkYsidMpWTK6W2BeZ7FEfcYkg476zPFsLnS");
 
@@ -39,41 +41,26 @@ pub mod football_daos {
         Ok(())
     }
 
-    pub fn transfer_token(ctx: Context<InitialMintTransfer>) -> Result<()> {
-        // Create the Transfer struct for our context
-        let transfer_instruction = Transfer {
-            from: ctx.accounts.from.to_account_info(),
-            to: ctx.accounts.to.to_account_info(),
-            authority: ctx.accounts.from_authority.to_account_info(),
-        };
+    // Step 2 Create the realm
+    // Note the function create_realm automatically creates the holding accounts for the community and council tokens. See here: https://docs.rs/spl-governance/latest/src/spl_governance/instruction.rs.html#492
+    pub fn create_realm(ctx: Context<CreateRealm>, realm_name: String) -> Result<()> {
+        let current_program_pubkey: Pubkey =
+            Pubkey::from_str("Fg6PaFpoGXkYsidMpWTK6W2BeZ7FEfcYkg476zPFsLnS").unwrap();
 
-        let cpi_program = ctx.accounts.token_program.to_account_info();
-        // Create the Context for our Transfer request
-        let cpi_ctx = CpiContext::new(cpi_program, transfer_instruction);
-
-        // Execute anchor's helper function to transfer tokens
-        anchor_spl::token::transfer(cpi_ctx, 5)?;
-
+        let created_realm = spl_instruction::create_realm(
+            &current_program_pubkey, // program_id: &Pubkey, This is the id of the current program. It is used to generate the id of the realm account. See here: https://docs.rs/spl-governance/latest/src/spl_governance/instruction.rs.html#491
+            &current_program_pubkey, // realm_authority: &Pubkey, // I suppose to start with it will be this program, but in the next step we need to transfer this authority to a realm Governance so the DAO is self-governed
+            &ctx.accounts.mint.key(), // community_token_mint: &Pubkey, // This needs to be created before the realm account
+            ctx.accounts.user.key, //payer: &Pubkey, // I suppose this will be the account requesting the transaction
+            None, // council_token_mint: Option<Pubkey>, // This needs to be created before the realm account
+            None, // community_voter_weight_addin: Option<Pubkey>, // I think this might be optional - since it is an option, maybe it can have a value of None
+            None, // max_community_voter_weight_addin: Option<Pubkey>, // I think this might be optional - since it is an option, maybe it can have a value of None
+            realm_name, // name: String, // Name of the DAO should be supplied by the user
+            60, // min_community_weight_to_create_governance: u64, // Min number of voter’s community weight required to create a governance. Maybe this can be a calculated percentage of the total mint supply
+            MintMaxVoteWeightSource::SupplyFraction(10 ^ 10), //community_mint_max_vote_weight_source: MintMaxVoteWeightSource // The source used for community mint max vote weight source. No idea what this means. Values betweewn 0-100
+        );
         Ok(())
     }
-
-    // // Step 2 Create the realm
-    // // Note the function create_realm automatically creates the holding accounts for the community and council tokens. See here: https://docs.rs/spl-governance/latest/src/spl_governance/instruction.rs.html#492
-    // pub fn create_realm() -> Result<()> {
-    //     let created_realm = spl_instruction::create_realm(
-    //         program_id: &Pubkey, // This is the id of the current program. It is used to generate the id of the realm account. See here: https://docs.rs/spl-governance/latest/src/spl_governance/instruction.rs.html#491
-    //         realm_authority: &Pubkey, // I suppose to start with it will be this program, but in the next step we need to transfer this authority to a realm Governance so the DAO is self-governed
-    //         community_token_mint: &Pubkey, // This needs to be created before the realm account
-    //         payer: &Pubkey, // I suppose this will be the account requesting the transaction
-    //         council_token_mint: Option<Pubkey>, // This needs to be created before the realm account
-    //         community_voter_weight_addin: Option<Pubkey>, // I think this might be optional - since it is an option, maybe it can have a value of None
-    //         max_community_voter_weight_addin: Option<Pubkey>, // I think this might be optional - since it is an option, maybe it can have a value of None
-    //         name: String, // Name of the DAO should be supplied by the user
-    //         min_community_weight_to_create_governance: u64, // Min number of voter’s community weight required to create a governance. Maybe this can be a calculated percentage of the total mint supply
-    //         community_mint_max_vote_weight_source: MintMaxVoteWeightSource // The source used for community mint max vote weight source. No idea what this means. Values betweewn 0-100
-    //     )
-    //     Ok(())
-    // }
 
     // // Step 3 Create a realm Governance and transfer the realm account's realm_authority to it.
     // pub fn create_realm_governance() -> Result<()> {
@@ -240,27 +227,22 @@ pub struct Initialize {}
 pub struct CreateCommunityMint<'info> {
     /// CHECK: This is the token that we want to mint
     #[account(mut)]
-    pub mint: UncheckedAccount<'info>,
+    pub mint: Account<'info, Mint>,
     pub token_program: Program<'info, Token>,
     /// CHECK: This is the token account that we want to mint tokens to
     #[account(mut)]
-    pub token_account: UncheckedAccount<'info>,
+    pub token_account: AccountInfo<'info>,
     /// CHECK: the authority of the mint account
-    #[account(mut)]
-    pub authority: AccountInfo<'info>,
+    pub authority: Signer<'info>,
 }
 
+// Create realm
 #[derive(Accounts)]
-pub struct InitialMintTransfer<'info> {
-    pub token_program: Program<'info, Token>,
-    /// CHECK: The associated token account that we are transferring the token from
+pub struct CreateRealm<'info> {
     #[account(mut)]
-    pub from: UncheckedAccount<'info>,
-    /// CHECK: The associated token account that we are transferring the token to
+    pub mint: Account<'info, Mint>,
     #[account(mut)]
-    pub to: AccountInfo<'info>,
-    // the authority of the from account
-    pub from_authority: Signer<'info>,
+    pub user: Signer<'info>,
 }
 
 // // Account structure

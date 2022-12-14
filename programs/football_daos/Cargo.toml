@@ -18,4 +18,4 @@ default = []
 [dependencies]
 anchor-lang = "0.25.0"
 anchor-spl = "0.25.0"
-spl-governance = "2.2.4"
+spl-governance = { version="2.2.4", features = [ "no-entrypoint" ] }
