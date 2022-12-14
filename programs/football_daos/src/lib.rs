@@ -6,7 +6,7 @@ use anchor_spl::token::{Mint, MintTo, Token};
 declare_id!("Fg6PaFpoGXkYsidMpWTK6W2BeZ7FEfcYkg476zPFsLnS");
 
 #[program]
-pub mod rayhans_first_dao_project {
+pub mod football_daos {
     use super::*;
 
     pub fn initialize(ctx: Context<Initialize>) -> Result<()> {
