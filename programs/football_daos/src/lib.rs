@@ -6,7 +6,7 @@ use std::str::FromStr;
 use spl_governance::instruction as spl_instruction;
 use spl_governance::state::enums::MintMaxVoteWeightSource;
 
-declare_id!("Fg6PaFpoGXkYsidMpWTK6W2BeZ7FEfcYkg476zPFsLnS");
+declare_id!("3Sz5VQ2VnxZsgTsGrJqUSbpfM4H4efMm8QCFqLtq6WjN");
 
 #[program]
 pub mod football_daos {
@@ -36,7 +36,7 @@ pub mod football_daos {
         let cpi_ctx = CpiContext::new(cpi_program, cpi_accounts);
 
         // Execute anchor's helper function to mint tokens
-        token::mint_to(cpi_ctx, 10)?;
+        token::mint_to(cpi_ctx, 100)?;
 
         Ok(())
     }

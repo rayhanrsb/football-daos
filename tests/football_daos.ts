@@ -77,7 +77,8 @@ const main = async () => {
 
   // Get minted token amount on the ATA for our anchor wallet
   const minted = (await program.provider.connection.getParsedAccountInfo(associatedTokenAccount)).value.data.parsed.info.tokenAmount.amount;
-  console.log(minted + " should equal 10");
+  console.log("minted and transferred " + minted + " governance tokens");
+  console.log("Token holding account is: " + associatedTokenAccount)
 
 
   // Step 2 - Create the realm
@@ -89,16 +90,14 @@ const main = async () => {
   }).rpc();
 
   // Step 3 - Find the created realm address
-
-  const [realmPubkey, _] = await anchor.web3.PublicKey.findProgramAddressSync(
-    [
-      anchor.utils.bytes.utf8.encode(name),
-      program.programId.toBuffer(),
-    ],
+  const [realmPubkey, _] = anchor.web3.PublicKey.findProgramAddressSync(
+    [anchor.utils.bytes.utf8.encode("governance"), anchor.utils.bytes.utf8.encode(name)],
     program.programId
   );
 
   console.log("realmPubkey is: " + realmPubkey.toString());
+
+  console.log("program pub key is: " + program.programId.toString());
 
 
 };
