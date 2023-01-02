@@ -14,7 +14,7 @@ There are two main solana programs in this project. The first is a custom progra
 
 Both programs are deployed to devnet with the following IDs:
 
-Custom football-dao program: 3Sz5VQ2VnxZsgTsGrJqUSbpfM4H4efMm8QCFqLtq6WjN
-Cloned spl-governance program: 5eVUjoF1uTzSA4eA4xEiL9Y1MrsboMcugWp4CC9Md6aZ
+- Custom football-dao program: CLTDEGRKn38QSHThdJipojV76eTZZdsgjvmFXcpwc6nx
+- Cloned spl-governance program: 5eVUjoF1uTzSA4eA4xEiL9Y1MrsboMcugWp4CC9Md6aZ
 
 The front-end is pending.

@@ -3,10 +3,16 @@ use anchor_spl::token;
 use anchor_spl::token::{Mint, MintTo, Token};
 use std::str::FromStr;
 // use anchor_lang::solana_program::entrypoint::ProgramResult;
-use spl_governance::instruction as spl_instruction;
-use spl_governance::state::enums::MintMaxVoteWeightSource;
+use spl_governance::instruction as governance_instruction;
+use spl_governance::instruction::GovernanceInstruction;
+use spl_governance::state::enums::MintMaxVoterWeightSource;
+use spl_governance::state::realm;
+use spl_governance::state::realm::RealmConfigArgs;
+use spl_governance::state::realm_config;
+use spl_governance::state::realm::GoverningTokenConfigArgs;
+use spl_governance::state::realm_config::GoverningTokenType;
 
-declare_id!("3Sz5VQ2VnxZsgTsGrJqUSbpfM4H4efMm8QCFqLtq6WjN");
+declare_id!("CLTDEGRKn38QSHThdJipojV76eTZZdsgjvmFXcpwc6nx");
 
 #[program]
 pub mod football_daos {
@@ -45,9 +51,9 @@ pub mod football_daos {
     // Note the function create_realm automatically creates the holding accounts for the community and council tokens. See here: https://docs.rs/spl-governance/latest/src/spl_governance/instruction.rs.html#492
     pub fn create_realm(ctx: Context<CreateRealm>, realm_name: String) -> Result<()> {
         let current_program_pubkey: Pubkey =
-            Pubkey::from_str("Fg6PaFpoGXkYsidMpWTK6W2BeZ7FEfcYkg476zPFsLnS").unwrap();
+            Pubkey::from_str("CLTDEGRKn38QSHThdJipojV76eTZZdsgjvmFXcpwc6nx").unwrap();
 
-        let created_realm = spl_instruction::create_realm(
+        let created_realm = governance_instruction::create_realm(
             &current_program_pubkey, // program_id: &Pubkey, This is the id of the custom governance program
             &current_program_pubkey, // realm_authority: &Pubkey, // I suppose to start with it will be this program, but in the next step we need to transfer this authority to a realm Governance so the DAO is self-governed
             &ctx.accounts.mint.key(), // community_token_mint: &Pubkey, // This needs to be created before the realm account
@@ -57,14 +63,37 @@ pub mod football_daos {
             None, // max_community_voter_weight_addin: Option<Pubkey>, // I think this might be optional - since it is an option, maybe it can have a value of None
             realm_name, // name: String, // Name of the DAO should be supplied by the user
             60, // min_community_weight_to_create_governance: u64, // Min number of voter’s community weight required to create a governance. Maybe this can be a calculated percentage of the total mint supply
-            MintMaxVoteWeightSource::SupplyFraction(10 ^ 10), //community_mint_max_vote_weight_source: MintMaxVoteWeightSource // The source used for community mint max vote weight source. No idea what this means. Values betweewn 0-100
+            MintMaxVoterWeightSource::SupplyFraction(10 ^ 10), //community_mint_max_vote_weight_source: MintMaxVoteWeightSource // The source used for community mint max vote weight source. No idea what this means. Values betweewn 0-100
         );
+
+        let new_realm_community_token_config_args = GoverningTokenConfigArgs{
+            use_voter_weight_addin: false,
+            use_max_voter_weight_addin: false,
+            token_type: GoverningTokenType::Liquid
+        };
+
+        let new_realm_council_token_config_args = GoverningTokenConfigArgs{
+            use_voter_weight_addin: false,
+            use_max_voter_weight_addin: false,
+            token_type: GoverningTokenType::Liquid
+        };
+
+        let new_realm_config_args = RealmConfigArgs {
+            use_council_mint: false, // pub use_council_mint: bool,
+            min_community_weight_to_create_governance: 600, // pub min_community_weight_to_create_governance: u64,
+            community_mint_max_voter_weight_source: MintMaxVoterWeightSource::SupplyFraction(50), // pub community_mint_max_voter_weight_source: MintMaxVoterWeightSource,
+            community_token_config_args: new_realm_community_token_config_args, // pub community_token_config_args: GoverningTokenConfigArgs,
+            council_token_config_args: new_realm_council_token_config_args // pub council_token_config_args: GoverningTokenConfigArgs,
+        };
+
+        let create_realm_instruction: GovernanceInstruction = governance_instruction::GovernanceInstruction::CreateRealm { name: String::from("Test Football DAO"), config_args: new_realm_config_args };
+
         Ok(())
     }
 
     // // Step 3 Create a realm Governance and transfer the realm account's realm_authority to it.
     // pub fn create_realm_governance() -> Result<()> {
-    //     let created_realm_governance = spl_spl_instruction::create_governance(
+    //     let created_realm_governance = spl_governance_instruction::create_governance(
     //         program_id: &Pubkey, // I think this refers to the current program that is building the DAO. Check this out https://docs.rs/spl-governance/latest/src/spl_governance/instruction.rs.html#700
     //         realm: &Pubkey, // The Pubkey of the realm created in the previous step
     //         governed_account: Option<&Pubkey>, // The pubkey of the governed account, in this case the realm_account
@@ -79,7 +108,7 @@ pub mod football_daos {
     //     // I am pretty sure that it is possible to create all the PubKeys in advance before actually making the accounts
     //     // That would make it easier, we could set the correct authority from the start even if the realm governance account has not been created
     //     // For now, we will use the set_realm_authority method
-    //     let updated_authority = spl_instruction::set_realm_authority(
+    //     let updated_authority = governance_instruction::set_realm_authority(
     //         program_id: &Pubkey, // Idk which program it is looking for now? Is it this program?
     //         realm: &Pubkey, // The pubkey of the realm
     //         realm_authority: &Pubkey, // The current realm authority which should be this program I think?
@@ -91,7 +120,7 @@ pub mod football_daos {
 
     // // Step 4 Create the governance account for the governed account
     // pub fn create_token_governance() -> Result<()> {
-    //     let created_token_governance = spl_instruction::create_token_governance(
+    //     let created_token_governance = governance_instruction::create_token_governance(
     //         program_id: &Pubkey, //
     //         realm: &Pubkey,
     //         governed_token: &Pubkey,
@@ -108,7 +137,7 @@ pub mod football_daos {
 
     // // Step 5 Create governance for the Mint that created the token account
     // pub fn create_mint_governance() -> Result<()> {
-    //     let created_mint_governance = spl_instruction::create_mint_governance(
+    //     let created_mint_governance = governance_instruction::create_mint_governance(
     //         program_id: &Pubkey,
     //         realm: &Pubkey,
     //         governed_mint: &Pubkey,
@@ -126,9 +155,9 @@ pub mod football_daos {
     // // Step 6 distribute tokens to token holders - Should this happen in an earlier step?
     // // Who is the authority for distributing tokens? How can people buy or acquire tokens? Is that part of the DAO or a separate mechanism?
 
-    // // Step 7 Allow token holders to create proposals use spl_instruction::create_proposal()
+    // // Step 7 Allow token holders to create proposals use governance_instruction::create_proposal()
     // fn add_proposal() -> Result<()> {
-    //     let added_proposal = spl_instruction::create_proposal(
+    //     let added_proposal = governance_instruction::create_proposal(
     //         program_id: &Pubkey, // Current program
     //         governance: &Pubkey, // Pubkey of the governance account that this proposal is for
     //         proposal_owner_record: &Pubkey, // The account making the proposal
@@ -146,7 +175,7 @@ pub mod football_daos {
     //     )
 
     //     // After creating the proposal, the proposal owner needs to insert a transaction that will be executed for each option that may pass in the proposal
-    //     let new_transaction = spl_instruction::insert_transaction(
+    //     let new_transaction = governance_instruction::insert_transaction(
     //         program_id: &Pubkey, // Current program
     //         governance: &Pubkey, // The governance account of the proposal
     //         proposal: &Pubkey, // The proposal account
@@ -164,7 +193,7 @@ pub mod football_daos {
     // // Step 8 Allow token holders to deposit tokens and vote on proposals
     // // To do this, users must deposit their tokens into a PDA token owner record, see here: https://docs.rs/spl-governance/latest/src/spl_governance/instruction.rs.html#564-605
     // fn deposit_governing_tokens() -> Result<()> {
-    //     let deposit = spl_instruction::deposit_governing_tokens(
+    //     let deposit = governance_instruction::deposit_governing_tokens(
     //         program_id: &Pubkey, // Id of this program
     //         realm: &Pubkey, // Id of the realm
     //         governing_token_source: &Pubkey, // I suppose the wallet from which tokens are being transferred
@@ -177,7 +206,7 @@ pub mod football_daos {
     // }
 
     // fn vote() -> Result<()> {
-    //     let vote = spl_instruction::cast_vote(
+    //     let vote = governance_instruction::cast_vote(
     //         program_id: &Pubkey, // This program
     //         realm: &Pubkey, // The realm
     //         governance: &Pubkey, // The governance of the proposal being voted for
@@ -195,7 +224,7 @@ pub mod football_daos {
 
     // // Step 9 Allow proposals to close
     // fn close_proposal() -> Result<()> {
-    //     let prposal_close = spl_instruction::finalize_vote(
+    //     let prposal_close = governance_instruction::finalize_vote(
     //         program_id: &Pubkey, // Current program
     //         realm: &Pubkey, // Current Realm
     //         governance: &Pubkey, // Governance for the proposal being closed
@@ -208,7 +237,7 @@ pub mod football_daos {
 
     // // Step 10 allow execution of succcessful transactions
     // fn execute_transaction() -> Result<()> {
-    //     let execution = spl_instruction::execute_transaction(
+    //     let execution = governance_instruction::execute_transaction(
     //         program_id: &Pubkey, // This program
     //         governance: &Pubkey, // The governance of the proposal who's transaction is being executed
     //         proposal: &Pubkey, // The proposal who's transaction is being executed
