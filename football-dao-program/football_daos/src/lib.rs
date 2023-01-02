@@ -48,7 +48,7 @@ pub mod football_daos {
             Pubkey::from_str("Fg6PaFpoGXkYsidMpWTK6W2BeZ7FEfcYkg476zPFsLnS").unwrap();
 
         let created_realm = spl_instruction::create_realm(
-            &current_program_pubkey, // program_id: &Pubkey, This is the id of the current program. It is used to generate the id of the realm account. See here: https://docs.rs/spl-governance/latest/src/spl_governance/instruction.rs.html#491
+            &current_program_pubkey, // program_id: &Pubkey, This is the id of the custom governance program
             &current_program_pubkey, // realm_authority: &Pubkey, // I suppose to start with it will be this program, but in the next step we need to transfer this authority to a realm Governance so the DAO is self-governed
             &ctx.accounts.mint.key(), // community_token_mint: &Pubkey, // This needs to be created before the realm account
             ctx.accounts.user.key, //payer: &Pubkey, // I suppose this will be the account requesting the transaction
